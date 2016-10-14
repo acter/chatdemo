@@ -1,0 +1,2 @@
+-include("poker_protocol.hrl").
+-include("openpoker_notify.hrl").
