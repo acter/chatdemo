@@ -72,6 +72,26 @@ function addMessage(from, target, text, time) {
 	base += increase;
 	scrollDown(base);
 };
+
+function addSysMsg(text,time){
+	if(text === null) return;
+	if(time == null) {
+		// if the time is null or undefined, use the current time.
+		time = new Date();
+	} else if((time instanceof Date) === false) {
+		// if it's a timestamp, interpret it
+		time = new Date(time);
+	}
+	var messageElement = $(document.createElement("table"));
+	messageElement.addClass("message");
+	text = util.toStaticHTML(text);
+	var content = '<tr>' + '  <td class="date">' + util.timeString(time) + '</td>' + '  <td class="nick">'  + ' 系统消息 ' + ': ' + '</td>' + '  <td class="msg-text">' + text + '</td>' + '</tr>';
+	messageElement.html(content);
+	//the log is the stream that we view
+	$("#chatHistory").append(messageElement);
+	base += increase;
+	scrollDown(base);
+}
 // set your name
 function setName() {
 	$("#name").text(username);
@@ -102,6 +122,15 @@ function showChat() {
 	$("entry").focus();
 	scrollDown(base);
 };
+
+function send_msg(data){
+	ws.send(JSON.stringify(data));  	
+};
+function login(username){
+	var data = {"msgid":1001,data:{"username":username}};
+	send_msg(data);
+};
+
 $(document).ready(function() {
 	console.log("login");
 	showLogin();
@@ -133,12 +162,18 @@ $(document).ready(function() {
 			setRoom();
 			showChat();
 			$("#chatHistory").show();
+			addSysMsg("Welcome to cowboy!");
+			login(username);
         };  
 
         ws.onmessage = function (evt) {  
             var data =  JSON.parse(evt.data);  
-            console.log("Received: " + data);  
-            addMessage(data.username, "*", data.msg);
+            console.log("Received: " + data); 
+            if(data.msgid==1004){
+            	addMessage(data.username, "*", data.msg);
+            }else if(data.msgid==1002){
+            	addSysMsg("登录成功！");
+            }             
         };  
 
         ws.onclose = function() {  
@@ -153,9 +188,9 @@ $(document).ready(function() {
 		var msg = $("#entry").attr("value").replace("\n", "");
 		if(!util.isBlank(msg)) {
 			console.log(target);
-			var data = {"username":username,"target":target,"msg":msg};
+			var data = {"msgid":1003,"data":{"username":username,"target":target,"msg":msg}};
 			console.log(JSON.stringify(data) );
-			ws.send(JSON.stringify(data));  
+			send_msg(data);
             $("#entry").attr("value", ""); // clear the entry field.
             addMessage(username, target, msg);
 		}

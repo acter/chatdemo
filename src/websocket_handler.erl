@@ -19,17 +19,30 @@ handle(_, State) ->
 websocket_init(_TransportName, Req, _Opts) -> 
     io:format("websocket_init ~n"), 
     poker_room:register(self()),
-    % Message = #{<<"msgid">> => 0,
-    %             <<"data">> => "Welcome to cowboy_websocket"},
-    % io:format("websocket_init ~p ~n",[jsx:is_json(jsx:encode(Message))]), 
-    % self() ! {send_message, self(),Message},
     {ok, Req, undefined_state}.  
   
-websocket_handle({text, Data}, Req, State) -> 
-    io:format("websocket_handle ~p ~n",[Data]), 
-    io:format("websocket_handle ~p ~n",[jsx:is_json(Data)]), 
-    poker_room:send_message(self(),Data),
-    {ok, Req, State}.
+% login(Pid) ->
+%     Message = #{<<"msgid">> => 1002,
+%                 <<"data">> => "Welcome to cowboy_websocket"},
+%     self() ! {send_message, Pid,Message}.
+
+websocket_handle({text, Msg}, Req, _State) -> 
+    io:format("websocket_handle ~p ~n",[Msg]), 
+    io:format("websocket_handle ~p ~n",[jsx:is_json(Msg)]), 
+    #{<<"msgid">> := MsgId,
+      <<"data">> := Data} = jsx:decode(Msg, [return_maps]),
+
+    NewState = case MsgId of
+        1001 ->
+            #{<<"username">> := UserName} = Data,
+            io:format("login: ~p ~n",[UserName]), 
+            poker_room:login(self(),UserName);
+        1003 ->
+            io:format("login 1003 ~n"), 
+            poker_room:send_message(self(),Data)
+    end,
+    
+    {ok, Req, NewState}.
 
 websocket_info({send_message,_ServerPid, Msg}, Req, State) ->  
     io:format("chat ~n"),  

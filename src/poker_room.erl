@@ -3,6 +3,8 @@
 
 -export([start_link/0, register/1, unregister/1, send_message/2]).
 
+-export([list/0, login/2]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
@@ -10,6 +12,9 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {clients=[]}).
+
+-record(user, {users=[]}).
+
 
 %%%=============================================================================
 %%% API
@@ -27,6 +32,8 @@ unregister(Pid) ->
 send_message(Pid, Message) ->
     gen_server:cast(?SERVER, {send_message, Pid, Message}).
 
+login(Pid,UserName) ->
+    gen_server:cast(?SERVER, {login, Pid,UserName}).
 %%%=============================================================================
 %%% gen_server callbacks
 %%%=============================================================================
@@ -45,6 +52,9 @@ init([]) ->
     ),
     {ok, #state{}}.
 
+list() ->
+    {ok,user}.
+
 handle_call(_Request, _From, State) ->
     {noreply, State}.
 
@@ -52,6 +62,14 @@ handle_cast({register, Pid}, State = #state{clients = Clients}) ->
     {noreply, State#state{clients = [Pid|Clients]}};
 handle_cast({unregister, Pid}, State = #state{clients = Clients}) ->
     {noreply, State#state{clients  = Clients -- [Pid]}};
+
+handle_cast({login, Pid,UserName}, State2 = #user{users = Users}) ->
+    Message = #{<<"msgid">> => 1002,
+                <<"data">> => "Welcome to cowboy_websocket"},
+    Pid ! {send_message, self(), Message},
+    % {noreply, State#user{users  = [{Pid,UserName}|Users]}};
+    {noreply, State2#user{users  = [UserName|Users]}};
+
 handle_cast({send_message, Pid, Message}, State) ->
     do_send_message(Pid, Message, State),
     {noreply, State}.
