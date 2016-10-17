@@ -130,6 +130,10 @@ function login(username){
 	var data = {"msgid":1001,data:{"username":username}};
 	send_msg(data);
 };
+function getOnline(){
+	var data = {"msgid":1005};
+	send_msg(data);
+}
 
 $(document).ready(function() {
 	console.log("login");
@@ -167,12 +171,20 @@ $(document).ready(function() {
         };  
 
         ws.onmessage = function (evt) {  
+        	console.log("Received: " + evt.data); 
             var data =  JSON.parse(evt.data);  
             console.log("Received: " + data); 
             if(data.msgid==1004){
-            	addMessage(data.username, "*", data.msg);
+            	var user = data.data;
+            	console.log("username: " + user.username);
+            	console.log("msg: " + user.msg);
+            	addMessage(user.username, user.target, user.msg);
             }else if(data.msgid==1002){
             	addSysMsg("登录成功！");
+            	//获取好友列表
+            	// getOnline();
+            }else if (data.msgid==1006){
+            	
             }             
         };  
 
@@ -187,9 +199,9 @@ $(document).ready(function() {
 		if(e.keyCode != 13 /* Return */ ) return;
 		var msg = $("#entry").attr("value").replace("\n", "");
 		if(!util.isBlank(msg)) {
-			console.log(target);
+			// console.log(target);
 			var data = {"msgid":1003,"data":{"username":username,"target":target,"msg":msg}};
-			console.log(JSON.stringify(data) );
+			// console.log(JSON.stringify(data) );
 			send_msg(data);
             $("#entry").attr("value", ""); // clear the entry field.
             addMessage(username, target, msg);

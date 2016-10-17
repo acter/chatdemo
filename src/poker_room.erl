@@ -3,7 +3,7 @@
 
 -export([start_link/0, register/1, unregister/1, send_message/2]).
 
--export([list/0, login/2]).
+-export([getOnline/1, login/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -13,7 +13,7 @@
 
 -record(state, {clients=[]}).
 
--record(user, {users=[]}).
+% -record(user, {users=[]}).
 
 
 %%%=============================================================================
@@ -34,6 +34,9 @@ send_message(Pid, Message) ->
 
 login(Pid,UserName) ->
     gen_server:cast(?SERVER, {login, Pid,UserName}).
+
+getOnline(Pid) ->
+    gen_server:cast(?SERVER, {online, Pid}).
 %%%=============================================================================
 %%% gen_server callbacks
 %%%=============================================================================
@@ -52,9 +55,6 @@ init([]) ->
     ),
     {ok, #state{}}.
 
-list() ->
-    {ok,user}.
-
 handle_call(_Request, _From, State) ->
     {noreply, State}.
 
@@ -63,12 +63,22 @@ handle_cast({register, Pid}, State = #state{clients = Clients}) ->
 handle_cast({unregister, Pid}, State = #state{clients = Clients}) ->
     {noreply, State#state{clients  = Clients -- [Pid]}};
 
-handle_cast({login, Pid,UserName}, State2 = #user{users = Users}) ->
-    Message = #{<<"msgid">> => 1002,
-                <<"data">> => "Welcome to cowboy_websocket"},
-    Pid ! {send_message, self(), Message},
-    % {noreply, State#user{users  = [{Pid,UserName}|Users]}};
-    {noreply, State2#user{users  = [UserName|Users]}};
+% handle_cast({login, Pid,UserName}, State = #user{users = Users}) ->
+%     io:format("login init ~p ~n",[UserName]), 
+%     do_login(Pid,UserName),
+%     {noreply, State#user{users = [UserName|Users]}};
+
+handle_cast({login, Pid,UserName}, State ) ->
+    io:format("login init ~p ~n",[UserName]), 
+    do_login(Pid,UserName),
+    {noreply, State};
+
+handle_cast({online, Pid}, State) ->
+    io:format("online init ~n"), 
+    Msg = #{<<"msgid">> => 1006,
+                <<"data">> => user},
+    Pid ! {send_message, self(), jsx:encode(Msg)},
+    {noreply, State};
 
 handle_cast({send_message, Pid, Message}, State) ->
     do_send_message(Pid, Message, State),
@@ -93,3 +103,9 @@ do_send_message(Pid, Message, #state{clients = Clients}) ->
       fun(OtherPid) ->
               OtherPid ! {send_message, self(), Message}
       end, OtherPids).
+
+do_login(Pid,UserName) ->
+    io:format("do_login init ~p ~n",[UserName]), 
+    Meg = #{<<"msgid">> => 1002,
+                <<"data">> => <<"Welcome to cowboy_websocket">>},
+    Pid ! {send_message, self(), jsx:encode(Meg)}.
