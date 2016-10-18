@@ -63,23 +63,36 @@ handle_cast({register, Pid}, State = #state{clients = Clients}) ->
 handle_cast({unregister, Pid}, State = #state{clients = Clients}) ->
     {noreply, State#state{clients  = Clients -- [Pid]}};
 
-% handle_cast({login, Pid,UserName}, State = #user{users = Users}) ->
-%     io:format("login init ~p ~n",[UserName]), 
-%     do_login(Pid,UserName),
-%     {noreply, State#user{users = [UserName|Users]}};
-
-handle_cast({login, Pid,UserName}, State ) ->
+handle_cast({login, Pid,UserName}, State) ->
     io:format("login init ~p ~n",[UserName]), 
     do_login(Pid,UserName),
+    % put(Pid,{ok,UserName}),
+    chat_user_list:add(UserName),
     {noreply, State};
 
+% handle_cast({online, Pid}, State = #state{clients = Clients}) ->
+%     io:format("online init ~n"), 
+%     OtherPids = Clients -- [Pid],
+%     {noreply, State};
+
+% handle_cast({online, Pid}, State = #state{clients = Clients}) ->
 handle_cast({online, Pid}, State) ->
     io:format("online init ~n"), 
+    % OtherPids = Clients -- [Pid],
+    % Players = [],
+    % Users =  lists:foldl(
+    %   fun(OtherPid,[]) ->
+    %         {ok,Name} = get(OtherPid),
+    %         io:format("Name init ~p ~n",[Name]),
+    %         Players++[Name]
+    %   end,Players, OtherPids),
+    % io:format("online init ~p ~n",Users), 
+    % Users = ["a","b","c"],
     Msg = #{<<"msgid">> => 1006,
-                <<"data">> => user},
+                <<"data">> => chat_user_list:list()},
+
     Pid ! {send_message, self(), jsx:encode(Msg)},
     {noreply, State};
-
 handle_cast({send_message, Pid, Message}, State) ->
     do_send_message(Pid, Message, State),
     {noreply, State}.
@@ -109,3 +122,15 @@ do_login(Pid,UserName) ->
     Meg = #{<<"msgid">> => 1002,
                 <<"data">> => <<"Welcome to cowboy_websocket">>},
     Pid ! {send_message, self(), jsx:encode(Meg)}.
+
+% do_get_online(Pid,OtherPids,#user{users = Users}) ->
+%     io:format("do_get_online init  ~n"), 
+%     Users1 =  lists:foldl(
+%       fun(OtherPid,[]) ->
+%             {ok,Name} = get(OtherPid),
+%             io:format("Name init ~p ~n",[Name]),
+%             Users++[Name]
+%       end,Users, OtherPids),
+%     Msg = #{<<"msgid">> => 1006,
+%                 <<"data">> => Users1},
+%     Pid ! {send_message, self(), jsx:encode(Msg)},

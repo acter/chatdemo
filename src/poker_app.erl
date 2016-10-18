@@ -29,6 +29,7 @@ start(_StartType, _StartArgs) ->
   %   cowboy:start_http(my_http_listener, 100, [{port, 8080}],
   %       [{env, [{dispatch, Dispatch}]}]
   %   ),
+    chat_user_list:init(),
     poker_sup:start_link().
 
 %%--------------------------------------------------------------------

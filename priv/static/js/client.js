@@ -131,7 +131,7 @@ function login(username){
 	send_msg(data);
 };
 function getOnline(){
-	var data = {"msgid":1005};
+	var data = {"msgid":1005,data:{}};
 	send_msg(data);
 }
 
@@ -182,9 +182,17 @@ $(document).ready(function() {
             }else if(data.msgid==1002){
             	addSysMsg("登录成功！");
             	//获取好友列表
-            	// getOnline();
+            	getOnline();
             }else if (data.msgid==1006){
-            	
+            	// initUserList(data);
+            	var users = data.data;
+            	for(var i = 0; i < users.length; i++) {
+					console.log("username: " + users[i]);
+					var slElement = $(document.createElement("option"));
+					slElement.attr("value", users[i]);
+					slElement.text(users[i]);
+					$("#usersList").append(slElement);
+				}
             }             
         };  
 
