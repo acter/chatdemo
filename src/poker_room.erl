@@ -1,9 +1,9 @@
 -module(poker_room).
 -behaviour(gen_server).
 
--export([start_link/0, register/1, unregister/1, send_message/2]).
+-export([start_link/0, send_message/2]).
 
--export([getOnline/1, login/2]).
+-export([ login/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -23,20 +23,12 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-register(Pid) ->
-    gen_server:cast(?SERVER, {register, Pid}).
-
-unregister(Pid) ->
-    gen_server:cast(?SERVER, {unregister, Pid}).
-
 send_message(Pid, Message) ->
     gen_server:cast(?SERVER, {send_message, Pid, Message}).
 
-login(Pid,UserName) ->
-    gen_server:cast(?SERVER, {login, Pid,UserName}).
+login(Pid,UserName,Rid) ->
+    gen_server:cast(?SERVER, {login, Pid,UserName,Rid}).
 
-getOnline(Pid) ->
-    gen_server:cast(?SERVER, {online, Pid}).
 %%%=============================================================================
 %%% gen_server callbacks
 %%%=============================================================================
@@ -58,36 +50,17 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {noreply, State}.
 
-handle_cast({register, Pid}, State = #state{clients = Clients}) ->
-    {noreply, State#state{clients = [Pid|Clients]}};
-handle_cast({unregister, Pid}, State = #state{clients = Clients}) ->
-    {noreply, State#state{clients  = Clients -- [Pid]}};
-
-handle_cast({login, Pid,UserName}, State) ->
+handle_cast({login, Pid,UserName,Rid}, State) ->
     io:format("login init ~p ~n",[UserName]), 
-    do_login(Pid,UserName),
-    % put(Pid,{ok,UserName}),
-    chat_user_list:add(UserName),
+    do_login(Pid,UserName,Rid),
+    %%去通知本频道在线人员
+    notice_all(UserName,Rid),
+    %%添加到ets表
+    chat_user_list:add(Pid,UserName,Rid),
     {noreply, State};
 
-% handle_cast({online, Pid}, State = #state{clients = Clients}) ->
-%     io:format("online init ~n"), 
-%     OtherPids = Clients -- [Pid],
-%     {noreply, State};
-
-% handle_cast({online, Pid}, State = #state{clients = Clients}) ->
 handle_cast({online, Pid}, State) ->
     io:format("online init ~n"), 
-    % OtherPids = Clients -- [Pid],
-    % Players = [],
-    % Users =  lists:foldl(
-    %   fun(OtherPid,[]) ->
-    %         {ok,Name} = get(OtherPid),
-    %         io:format("Name init ~p ~n",[Name]),
-    %         Players++[Name]
-    %   end,Players, OtherPids),
-    % io:format("online init ~p ~n",Users), 
-    % Users = ["a","b","c"],
     Msg = #{<<"msgid">> => 1006,
                 <<"data">> => chat_user_list:list()},
 
@@ -117,20 +90,20 @@ do_send_message(Pid, Message, #state{clients = Clients}) ->
               OtherPid ! {send_message, self(), Message}
       end, OtherPids).
 
-do_login(Pid,UserName) ->
+do_login(Pid,UserName,Rid) ->
     io:format("do_login init ~p ~n",[UserName]), 
+    {ok,Users} = chat_user_list:getMembers(Rid),
+    io:format("Members ~p ~n",[Users]), 
     Meg = #{<<"msgid">> => 1002,
-                <<"data">> => <<"Welcome to cowboy_websocket">>},
+                <<"data">> => Users},
     Pid ! {send_message, self(), jsx:encode(Meg)}.
 
-% do_get_online(Pid,OtherPids,#user{users = Users}) ->
-%     io:format("do_get_online init  ~n"), 
-%     Users1 =  lists:foldl(
-%       fun(OtherPid,[]) ->
-%             {ok,Name} = get(OtherPid),
-%             io:format("Name init ~p ~n",[Name]),
-%             Users++[Name]
-%       end,Users, OtherPids),
-%     Msg = #{<<"msgid">> => 1006,
-%                 <<"data">> => Users1},
-%     Pid ! {send_message, self(), jsx:encode(Msg)},
+notice_all(UserName,Rid) ->
+    {ok,OtherPids}  = chat_user_list:getPids(Rid),
+    io:format("OtherPids ~p ~n",[OtherPids]), 
+    Meg = #{<<"msgid">> => 1006,
+                <<"data">> => UserName},
+    lists:foreach(
+      fun(OtherPid) ->
+              OtherPid ! {send_message, self(), jsx:encode(Meg)}
+      end, OtherPids).

@@ -123,11 +123,19 @@ function showChat() {
 	scrollDown(base);
 };
 
+// add user in user list
+function addUser(user) {
+	var slElement = $(document.createElement("option"));
+	slElement.attr("value", user);
+	slElement.text(user);
+	$("#usersList").append(slElement);
+};
+
 function send_msg(data){
 	ws.send(JSON.stringify(data));  	
 };
-function login(username){
-	var data = {"msgid":1001,data:{"username":username}};
+function login(username,rid){
+	var data = {"msgid":1001,data:{"username":username,"rid":rid}};
 	send_msg(data);
 };
 function getOnline(){
@@ -136,7 +144,6 @@ function getOnline(){
 }
 
 $(document).ready(function() {
-	console.log("login");
 	showLogin();
 
 	//deal with login button click.
@@ -167,7 +174,7 @@ $(document).ready(function() {
 			showChat();
 			$("#chatHistory").show();
 			addSysMsg("Welcome to cowboy!");
-			login(username);
+			login(username,rid);
         };  
 
         ws.onmessage = function (evt) {  
@@ -182,9 +189,7 @@ $(document).ready(function() {
             }else if(data.msgid==1002){
             	addSysMsg("登录成功！");
             	//获取好友列表
-            	getOnline();
-            }else if (data.msgid==1006){
-            	// initUserList(data);
+            	// getOnline();
             	var users = data.data;
             	for(var i = 0; i < users.length; i++) {
 					console.log("username: " + users[i]);
@@ -193,6 +198,9 @@ $(document).ready(function() {
 					slElement.text(users[i]);
 					$("#usersList").append(slElement);
 				}
+            }else if (data.msgid==1006){
+            	var user = data.data;
+            	addUser(user)
             }             
         };  
 
