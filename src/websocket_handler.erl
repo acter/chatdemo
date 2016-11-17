@@ -35,7 +35,14 @@ websocket_handle({text, Msg}, Req, _State) ->
             io:format("login 1003 ~n"), 
             OtherMsg =  #{<<"msgid">> => 1004,
                 <<"data">> => Data},
-            poker_room:send_message(self(),jsx:encode(OtherMsg))
+            #{<<"username">> := UserName,<<"target">> := Target,<<"rid">> := Rid} = Data,
+            io:format("target: ~p ~p ~n",[Target,UserName]), 
+            if
+                Target == <<"*">> ->
+                    poker_room:send_all_msg(Rid,jsx:encode(OtherMsg));
+                true ->
+                    poker_room:send_priv_msg(Target,Rid,jsx:encode(OtherMsg))
+            end
     end,
     {ok, Req, NewState}.
 

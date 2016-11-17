@@ -216,11 +216,11 @@ $(document).ready(function() {
 		var msg = $("#entry").attr("value").replace("\n", "");
 		if(!util.isBlank(msg)) {
 			// console.log(target);
-			var data = {"msgid":1003,"data":{"username":username,"target":target,"msg":msg}};
+			var data = {"msgid":1003,"data":{"username":username,"target":target,"msg":msg,"rid":rid}};
 			// console.log(JSON.stringify(data) );
 			send_msg(data);
             $("#entry").attr("value", ""); // clear the entry field.
-            addMessage(username, target, msg);
+            // addMessage(username, target, msg);
 		}
 	});
 });

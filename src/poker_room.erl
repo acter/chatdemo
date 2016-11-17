@@ -1,7 +1,7 @@
 -module(poker_room).
 -behaviour(gen_server).
 
--export([start_link/0, send_message/2]).
+-export([start_link/0, send_all_msg/2,send_priv_msg/3]).
 
 -export([ login/3]).
 
@@ -11,9 +11,6 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {clients=[]}).
-
-% -record(user, {users=[]}).
 
 
 %%%=============================================================================
@@ -23,8 +20,11 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-send_message(Pid, Message) ->
-    gen_server:cast(?SERVER, {send_message, Pid, Message}).
+send_all_msg(Rid,Message) ->
+    gen_server:cast(?SERVER, {send_all_msg, Rid, Message}).
+
+send_priv_msg(UserName, Rid,Message) ->
+    gen_server:cast(?SERVER, {send_priv_msg, UserName,Rid, Message}).
 
 login(Pid,UserName,Rid) ->
     gen_server:cast(?SERVER, {login, Pid,UserName,Rid}).
@@ -45,7 +45,7 @@ init([]) ->
     cowboy:start_http(my_http_listener, 100, [{port, 8080}],
         [{env, [{dispatch, Dispatch}]}]
     ),
-    {ok, #state{}}.
+    {ok,[]}.
 
 handle_call(_Request, _From, State) ->
     {noreply, State}.
@@ -66,8 +66,13 @@ handle_cast({online, Pid}, State) ->
 
     Pid ! {send_message, self(), jsx:encode(Msg)},
     {noreply, State};
-handle_cast({send_message, Pid, Message}, State) ->
-    do_send_message(Pid, Message, State),
+
+handle_cast({send_all_msg, Rid, Message}, State) ->
+    do_send_all_msg(Rid,Message),
+    {noreply, State};
+
+handle_cast({send_priv_msg, UserName,Rid, Message}, State) ->
+    do_send_priv_msg(UserName, Rid,Message),
     {noreply, State}.
 
 handle_info(_Info, State) ->
@@ -83,12 +88,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%=============================================================================
 
-do_send_message(Pid, Message, #state{clients = Clients}) ->
-    OtherPids = Clients -- [Pid],
+do_send_all_msg(Rid, Message) ->
+    {ok,OtherPids}  = chat_user_list:getPids(Rid),
     lists:foreach(
       fun(OtherPid) ->
               OtherPid ! {send_message, self(), Message}
       end, OtherPids).
+
+do_send_priv_msg(UserName,Rid, Message) ->
+    OtherPid = chat_user_list:getPid(UserName,Rid),
+    io:format("do_send_priv_msg init ~p ~p ~n",[OtherPid,Message]),
+
+    [Opid] = OtherPid,
+    
+    Opid ! {send_message, self(), Message}.
+    % case OtherPid == ok of
+    %     false ->
+    %         OtherPid ! {send_message, self(), Message}
+    % end.
 
 do_login(Pid,UserName,Rid) ->
     io:format("do_login init ~p ~n",[UserName]), 
@@ -105,5 +122,6 @@ notice_all(UserName,Rid) ->
                 <<"data">> => UserName},
     lists:foreach(
       fun(OtherPid) ->
+              io:format("OtherPid ~p ~n",[OtherPid]), 
               OtherPid ! {send_message, self(), jsx:encode(Meg)}
       end, OtherPids).

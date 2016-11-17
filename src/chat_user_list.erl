@@ -1,6 +1,6 @@
 -module(chat_user_list).
 
--export([init/0, add/3, remove/1, rename/2, list/0,getMembers/1,getPids/1]).
+-export([init/0, add/3, remove/1, rename/2, list/0,getMembers/1,getPids/1,getPid/2]).
 
 -record(ets_online, {pid,username,rid}). % dummy record for now
 
@@ -42,3 +42,13 @@ getPids(Rid) ->
     % Users = [ {Name} || [_,Name] <- L],
     Users = [ Pid || [Pid,_] <- L],
     {ok,Users}.
+
+getPid(UserName,Rid) ->
+    L = ets:match(?ETS_ONLINE,#ets_online{pid='$1',username=UserName,rid=Rid,_='_'}),
+    io:format("getPid ~p ~n",[L]), 
+    case L of
+        [] ->
+            ok;
+        [Pid] ->
+            Pid
+    end.

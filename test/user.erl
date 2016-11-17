@@ -39,7 +39,7 @@ ets:delete(users,102).
 %%匹配
 L = ets:match(users,#users{pid='$1',name='$2',rid=11}).
 
-L22 = [ {Pid,Name} || [Pid,Name] <- L]
+L22 = [ {Pid,Name} || [Pid,Name] <- L].
 
 
 ets:match(users,#users{pid='$1',name=lajabs11}).
